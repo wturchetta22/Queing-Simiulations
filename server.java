@@ -3,21 +3,65 @@ import java.util.*;
 public class server {
 	
 	ArrayList<Double> holder;
+	double mu;
+	double nextdeparture;
 	
-	public server() {
+	
+	public server(double exp) {
 		holder = new ArrayList<Double>();
-	}
-
-	public void addto(double time) {
-		holder.add(time);
+		mu = exp;
+		nextdeparture = Integer.MAX_VALUE;
 	}
 	
-	public double removefrom() {
+
+	public boolean addto(double time, double arrival) {
+		holder.add(time);
+		
+		if(holder.size() == 1) {//means we need to generate a new departure time
+			nextdeparture = time + getexp();
+		}
+		
+		return false; //don't generate a new departure time
+	}
+	
+	
+	
+	
+	
+	public void output() {
+		System.out.print("Current Line: ");
+		for(int i = 0; i < holder.size(); i++) {
+			System.out.print(holder.get(i) + ", ");
+		}
+		System.out.println();
+	}
+	
+	
+	public double removefrom(double time) {
+		if(holder.size() == 1) {
+			nextdeparture = Integer.MAX_VALUE;
+		}
+		else {
+			nextdeparture = time + getexp();
+		}
+		
 		return holder.remove(0);
+	}
+	
+	public double getnextdeparture() {
+		return nextdeparture;
 	}
 	
 	public int getlength() {
 		return holder.size();
+	}
+	
+	public double getexp() {
+		
+		
+		Random r = new Random();
+		return -(Math.log(1 - Math.random())/(mu));
+		
 	}
 	
 	
