@@ -44,6 +44,8 @@ public class server {
 		else {
 			nextdeparture = time + getexp();
 		}
+		//output();
+		//System.out.println(nextdeparture);
 		
 		return holder.remove(0);
 	}
