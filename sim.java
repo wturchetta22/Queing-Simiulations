@@ -162,7 +162,159 @@ public class sim {
 	//time to try the probabilistic one
 	
 	
-	
+	public static double probRoundJoinModel(double fast, double slow, double poi, double probability, int numfast, int numslow) {
+		//Probabilistically Choose the class of servers then when in each class run round robin in each class and take the round
+		//Robin server as a candidate with two other randomly queried servers, join the shortest queue out of those three servers
+		
+		ArrayList<server> faster = new ArrayList<server>();
+		ArrayList<server> slower = new ArrayList<server>();
+
+		for(int i = 0; i < numfast; i++) { //declaring x fast servers
+			faster.add(new server(fast));
+		}
+		for(int i = 0; i < numslow; i++) { //declaring y slow servers
+			slower.add(new server(slow));
+		}
+		
+		double nextarrival = getexp(poi);
+		double time = 0;
+		double movingavg = 0;
+		double removeditems = 0;
+		int serverremoved = 0;
+		int[] candidates = new int[3]; //holds the index of servers first being candidate from round robin other 4 randomly selected
+		int queueLen = 0; //to keep track of queue length for join the shortest queue implementation
+		int nextFastServer = 0;
+		int rrFastServer = 0; // keeps track of round robin index in the fast servers
+		int nextSlowServer = 0;
+		int rrSlowServer = 0; // keeps track of round robin index in the slow servers
+		Random r = new Random();
+		
+		double[][]next_departures_fast = new double[numfast][2];
+		double[][]next_departures_slow = new double[numslow][2];
+		//just keep track of the nextdeparturefast nextdepartureslow
+		
+		for(int i = 0; i<numfast; i++) {//initialize the next fast server's list
+			next_departures_fast[i][0] = Integer.MAX_VALUE;
+			next_departures_fast[i][1] = i; //keeps track of which server it is in
+		}
+		
+		for(int i = 0; i<numslow; i++) {//initialize the next slow server's list
+			next_departures_slow[i][0] = Integer.MAX_VALUE;
+			next_departures_slow[i][1] = i; //keeps track of which server it is in
+		}
+		
+		
+		
+		
+		for(int i = 0; i < 1000000; i++) {
+
+			/*
+			 * How this needs to work:
+			 * Sort the events and have an idea of when the next departure is and what server it is in
+			 * Compare next arrival with the first value in this array
+			 * If next arrival < next departure then give it to the next array and increment time
+			 * If next departure < next arrival then take away and increment time		 
+			 */
+			//really just need to insert if need be
+			
+			//deal with arrival according to some process - it's this process that will always change
+			if(nextarrival < next_departures_fast[0][0] && nextarrival < next_departures_slow[0][0]){
+				//generate random uniform variable
+				time = nextarrival;
+
+				
+				if(r.nextFloat() > probability) {
+					//give to fast (round robin)
+					queueLen = Integer.MAX_VALUE;
+					rrFastServer = (rrFastServer + 1)%numfast;
+					candidates[0] = rrFastServer;
+					for (int q = 1; q<3; q++){
+						candidates[q] = r.nextInt(numfast);
+					}
+					for(int a: candidates){ //join shortest queue one from round robin two others randomly queued
+						if(faster.get(a).getlength() < queueLen){
+							queueLen = faster.get(a).getlength();
+							nextFastServer = a;
+						}
+					}
+					faster.get(nextFastServer).addto(time, nextarrival);
+					for(int j = 0; j < numfast; j++) {
+						if(next_departures_fast[j][1] == nextFastServer) {
+							next_departures_fast[j][0] = faster.get(nextFastServer).getnextdeparture();	
+						}	
+					}
+				}
+				else{
+					queueLen = Integer.MAX_VALUE;
+					rrSlowServer = (rrSlowServer + 1)%numslow;
+					candidates[0] = rrSlowServer;
+					for (int q = 1; q<3; q++){
+						candidates[q] = r.nextInt(numslow);
+					}
+					for(int a: candidates){ //join shortest queue one from round robin two others randomly selected servers
+						if(slower.get(a).getlength() < queueLen){
+							queueLen = slower.get(a).getlength();
+							nextSlowServer = a;
+						}
+					}
+					slower.get(nextSlowServer).addto(time, nextarrival);
+					for(int j = 0; j < numslow; j++) {
+						if(next_departures_slow[j][1] == nextSlowServer) {
+							next_departures_slow[j][0] = slower.get(nextSlowServer).getnextdeparture();	
+						}	
+					}
+					//give to slow (round robin)
+				}
+				
+				nextarrival = time + getexp(poi);
+			}
+			
+			//deal with departures - this part will be the same for all processes
+			else {
+				//System.out.println("Next Departures Fast: " + next_departures_fast[0][0]);
+				//System.out.println("Next Departures Slow: " + next_departures_slow[0][0]);
+				if(next_departures_fast[0][0] < next_departures_slow[0][0]) {
+					//System.out.println("yellow");
+					serverremoved = (int)next_departures_fast[0][1];
+					time = faster.get(serverremoved).getnextdeparture();
+					//System.out.print("Fast ");
+					double timetakenforitem = time - faster.get(serverremoved).removefrom(time);
+					next_departures_fast[0][0] = faster.get(serverremoved).getnextdeparture();
+					removeditems++;
+					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+				}
+				else {
+					//System.out.println("green");
+					serverremoved = (int)next_departures_slow[0][1];
+					time = slower.get(serverremoved).getnextdeparture();
+					//System.out.println(next_departures_slow[0][1]);
+					//System.out.print("Slow ");
+					double timetakenforitem = time - slower.get(serverremoved).removefrom(time);
+					next_departures_slow[0][0] = slower.get(serverremoved).getnextdeparture();
+					removeditems++;
+					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+				}
+				
+			}
+			
+			//get next departures for fast and slow
+			sortbyColumn(next_departures_fast, 0);
+			sortbyColumn(next_departures_slow, 0);
+
+			
+			
+			/*
+			 System.out.println("Next Departure: " + next_departures_list[0][0]);
+			 System.out.println("Next Arrival: " + nextarrival);
+			 System.out.println("Time: " + time);
+			 System.out.println("--------");
+					*/
+		}
+
+		//System.out.println(removeditems);
+		System.out.println(movingavg);
+		return 0;
+	}
 	
 	
 	public static double heteroroundrobin(double fast, double slow, double poi, int intermission, boolean morefast, int numfast, int numslow) {
