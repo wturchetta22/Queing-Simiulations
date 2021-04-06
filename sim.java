@@ -31,6 +31,178 @@ public class sim {
 	
 		
 	}
+	public static double roundRobinPath(double exp, double poi) {
+
+		ArrayList<server> servers = new ArrayList<server>();
+		ArrayList<server> servers2 = new ArrayList<server>();
+		for(int i = 0; i < 2; i++) { //declaring 1000 servers
+			servers.add(new server(exp));
+			servers2.add(new server(exp));
+		}
+
+
+		double nextarrival = getexp(poi);
+		double nextarrival2 = nextarrival;
+		double time = 0;
+		double time2 = 0;
+		double movingavg = 0;
+		double movingavg2 = 0;
+		double removeditems = 0;
+		double removeditems2 = 0;
+		Random r = new Random();
+		int serverremoved = 0;
+		int serverremoved2 = 0;
+		int nextServer = 0;
+		int nextServer2 = 1;
+
+		double[][]next_departures_list = new double[2][2];
+		double[][]next_departures_list2 = new double[2][2];
+		for(int i = 0; i<2; i++) {
+			next_departures_list[i][0] = Integer.MAX_VALUE;
+			next_departures_list[i][1] = i; //keeps track of which server it is in
+			next_departures_list2[i][0] = Integer.MAX_VALUE;
+			next_departures_list2[i][1] = i;
+		}
+		int iii = 0;
+		double poisson = getexp(poi);
+		double[] arrivals = new double[1000000];
+		double[] services = new double[1000000];
+		arrivals[0] = poisson;
+		for(int i = 0; i < 1000000-1; i++){
+			arrivals[i+1] = arrivals[i]+getexp(poi);
+		}
+		for(int i = 0; i < 1000000; i++){
+			services[i] = getexp(exp);
+		}
+		int p1arrival = 0;
+		int p2arrival = 0;
+		int p1depart = 0;
+		int p2depart = 0;
+		nextarrival = arrivals[p1arrival];
+		nextarrival2 = arrivals[p2arrival];
+		double exp1 = services[p1depart];
+		double exp2 = services[p2depart];
+		int countTimer = 0;
+		boolean skip = false;
+		for(int i = 0; i < 1000000; i++) {
+			/*
+			 * How this needs to work:
+			 * Sort the events and have an idea of when the next departure is and what server it is in
+			 * Compare next arrival with the first value in this array
+			 * If next arrival < next departure then give it to the next array and increment time
+			 * If next departure < next arrival then take away and increment time
+			 */
+			//really just need to insert if need be
+
+			/*if(iii==2){
+				iii = 0;
+				poisson = getexp(poi);
+			}*/
+			if(nextarrival < next_departures_list[0][0]){
+				time = nextarrival;
+				p1arrival++;
+				//this is where a random number between 0-1000 should be made
+				nextServer = (nextServer + 1)%2;
+				if(servers.get(nextServer).addto2(time,nextarrival,exp1)) {
+					p1depart++;
+					exp1 = services[p1depart];
+				}
+				//System.out.println("next departure: " + servers.get(nextServer).getnextdeparture());
+				nextarrival = arrivals[p1arrival];
+
+
+			}
+
+			else {
+				serverremoved = (int)next_departures_list[0][1];
+				time = servers.get(serverremoved).getnextdeparture();
+				boolean nochange = false;
+				double timetakenforitem = time - servers.get(serverremoved).removefrom2(time,exp1,nochange);
+				if (!nochange){
+					p1depart++;
+					exp1 = services[p1depart];
+
+				}
+				next_departures_list[0][0] = servers.get(serverremoved).getnextdeparture();
+				removeditems++;
+				movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+
+			}
+
+			if(nextarrival2 < next_departures_list2[0][0]){
+				time2 = nextarrival2;
+				p2arrival++;
+
+
+				//this is where a random number between 0-1000 should be made
+				if(i==500){
+					skip = true;
+				}
+				if (skip) {
+					nextServer2 = nextServer2;
+					countTimer++;
+					if (countTimer == 2) {
+						skip = false;
+					}
+				}
+				else{
+					nextServer2 = (nextServer2 + 1) % 2;
+				}
+
+
+				if(servers2.get(nextServer2).addto2(time2, nextarrival2,exp2)){
+					p2depart++;
+					exp2 = services[p2depart];
+				}
+				//System.out.println("next departure: " + servers.get(nextServer).getnextdeparture());
+				nextarrival2 = arrivals[p2arrival];
+
+			}
+
+			else {
+				serverremoved2 = (int)next_departures_list2[0][1];
+				time2 = servers2.get(serverremoved2).getnextdeparture();
+				boolean nochange2 = false;
+				double timetakenforitem2 = time2 - servers2.get(serverremoved2).removefrom2(time2,exp2,nochange2);
+				if (!nochange2){
+					p2depart++;
+					exp2 = services[p1depart];
+
+				}
+				next_departures_list2[0][0] = servers2.get(serverremoved2).getnextdeparture();
+				removeditems2++;
+				movingavg2 = (movingavg2*(removeditems2-1) + timetakenforitem2)/removeditems2;
+
+			}
+
+			for(int j = 0; j < 2; j++) {
+				if(next_departures_list[j][1] == nextServer) {
+					next_departures_list[j][0] = servers.get(nextServer).getnextdeparture();
+				}
+
+
+			}
+			for(int j = 0; j < 2; j++) {
+				if (next_departures_list2[j][1] == nextServer2) {
+					next_departures_list2[j][0] = servers2.get(nextServer2).getnextdeparture();
+				}
+			}
+			sortbyColumn(next_departures_list, 0);
+			sortbyColumn(next_departures_list2, 0);
+
+			/*
+			 System.out.println("Next Departure: " + next_departures_list[0][0]);
+			 System.out.println("Next Arrival: " + nextarrival);
+			 System.out.println("Time: " + time);
+			 System.out.println("--------");
+					*/
+		}
+
+
+		System.out.println(movingavg);
+		System.out.println(movingavg2);
+		return 0;
+	}
 	
 	public static double probabilisticmodel(double fast, double slow, double poi, double probability, int numfast, int numslow) {
 		//intermission describes the number of servers before inputting 1 of the other kind
