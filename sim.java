@@ -1,7 +1,9 @@
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 public class sim {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		//System.out.println("yellow");
 		// TODO Auto-generated method stub
 	/*
@@ -17,236 +19,188 @@ public class sim {
 		//roundrobin(1, 500);
 		//heteroroundrobin(1, .5, 300, 5, true);
 		//heteroroundround check check check
-		//for(int i = 1; i<6; i++) {
-			//heteroroundrobin(1, .5, 300, i, false, 200, 800);
-		//}
-		//probabilisticmodel(1, .5, 300, .62, 200, 800);
-		double i = .41;
-		while(i<.7) {
+
+		//things we need: lambda (easy), MRT (easy), QF (easy), QS (easy), R, Policy
+		/*
+		FileWriter writer = new FileWriter("test.csv");
+		writer.append("lambda");
+		writer.append(",");
+		writer.append("MRT");
+		writer.append(",");
+		writer.append("QF");
+		writer.append(",");
+		writer.append("R");
+		writer.append(",");
+		writer.append("Probability");
+		writer.append("\n");
+		
+		for(int i = 4; i<10; i++) {
+			
+			double MRT = heteroroundrobin(1.2*.909090, .909090, 200, i, true, 500, 500);
+				
+			List<List<String>> rows = Arrays.asList(
+					Arrays.asList(".2", Double.toString(MRT), ".5", "2", String.valueOf(i), "false")
+					);
+			for (List<String> rowData : rows) {
+			    writer.append(String.join(",", rowData));
+			    writer.append("\n");
+			}
+			
+			/*
+			MRT = heteroroundrobin(1, .83333, 800, i, true, 500, 500);
+			rows = Arrays.asList(
+					Arrays.asList(".2", Double.toString(MRT), ".5", "2", String.valueOf(i), "true")
+					);
+			for (List<String> rowData : rows) {
+			    writer.append(String.join(",", rowData));
+			    writer.append("\n");
+			}
+			
+		}
+		
+		FileWriter writer = new FileWriter("test.csv");
+		writer.append("lambda");
+		writer.append(",");
+		writer.append("MRT");
+		writer.append(",");
+		writer.append("QF");
+		writer.append(",");
+		writer.append("R");
+		writer.append(",");
+		writer.append("Probability");
+		writer.append("\n");
+		
+		double i = .01;
+		while(i<.03) {
 			System.out.println(i);
-			probabilisticmodel(1, .5, 300, i, 200, 800);
+			double MRT = probRoundJoinModel(.90909*1.2, .90909, 200, i, 500, 500);
+			List<List<String>> rows = Arrays.asList(
+					Arrays.asList(".2", Double.toString(MRT), ".2", "2", Double.toString(i))
+					);
+			for (List<String> rowData : rows) {
+			    writer.append(String.join(",", rowData));
+			    writer.append("\n");
+			}
 			i = i+.01;
 		}
 		
+		/*
+		
 	
+		double i = .1;
+		while(i<.25) {
+			System.out.println(i);
+			double MRT = probabilisticmodel(.862*1.2, .862, 800, i, 800, 200);
+			List<List<String>> rows = Arrays.asList(
+					Arrays.asList(".2", Double.toString(MRT), ".2", "2", Double.toString(i))
+					);
+			for (List<String> rowData : rows) {
+			    writer.append(String.join(",", rowData));
+			    writer.append("\n");
+			}
+			i = i+.01;
+		}
+		
+		writer.flush();
+		writer.close();
+	*/
+		
+		
+		//speeds(2, .8);
+		
+		samplepathproof(1, 1.4);
+		
 		
 	}
-	public static double roundRobinPath(double exp, double poi) {
-
+	public static double speeds(double r, double qf) {
+		
+		//qf*mf + (1-qf)*ms = 1
+		//mf = r*ms
+		//ms(r*qf +(1-qf))
+		double ms = 1.0/(r*qf + (1-qf));
+		double a = asrandom(r*ms, ms, 200, (int)(qf*1000), (int)((1-qf)*1000));
+		System.out.println(a);
+		double b = asrandom(r*ms, ms, 500, (int)(qf*1000), (int)((1-qf)*1000));
+		System.out.println(b);
+		double c = asrandom(r*ms, ms, 800, (int)(qf*1000), (int)((1-qf)*1000));
+		System.out.println(c);
+		
+		return 1.0/(r*qf + (1-qf));
+	}
+	
+	
+	
+	public static double samplepathproof(double exp, double poi) {
+		
 		ArrayList<server> servers = new ArrayList<server>();
-		ArrayList<server> servers2 = new ArrayList<server>();
-		for(int i = 0; i < 2; i++) { //declaring 1000 servers
+		for(int i = 0; i < 4; i++) { //declaring 4 servers - all the same speed
 			servers.add(new server(exp));
-			servers2.add(new server(exp));
 		}
-
-
+		
 		double nextarrival = getexp(poi);
-		double nextarrival2 = nextarrival;
 		double time = 0;
-		double time2 = 0;
 		double movingavg = 0;
-		double movingavg2 = 0;
 		double removeditems = 0;
-		double removeditems2 = 0;
 		Random r = new Random();
 		int serverremoved = 0;
-		int serverremoved2 = 0;
 		int nextServer = 0;
-		int nextServer2 = 1;
-
-		double[][]next_departures_list = new double[2][2];
-		double[][]next_departures_list2 = new double[2][2];
-		for(int i = 0; i<2; i++) {
+		double mrtA = 0;
+		double mrtB = 0;
+		double removedA = 0;
+		double removedB = 0;
+		
+		double[][]next_departures_list = new double[4][2];
+		for(int i = 0; i<4; i++) {
 			next_departures_list[i][0] = Integer.MAX_VALUE;
 			next_departures_list[i][1] = i; //keeps track of which server it is in
-			next_departures_list2[i][0] = Integer.MAX_VALUE;
-			next_departures_list2[i][1] = i;
 		}
-		int iii = 0;
-		double poisson = getexp(poi);
-		double[] arrivals = new double[1000000];
-		double[] services = new double[1000000];
-		arrivals[0] = poisson;
-		for(int i = 0; i < 1000000-1; i++){
-			arrivals[i+1] = arrivals[i]+getexp(poi);
+		
+		ArrayList<Double> departure1 = new ArrayList<Double>(); //holds departure times for the nth job come in for servers 0,2
+		ArrayList<Double> departure2 = new ArrayList<Double>(); //holds departure times for the nth job to come in for servers 1,3
+		
+		for(int i = 0; i<20000; i++) {
+			departure1.add(getexp(exp));
+			departure2.add(getexp(exp));
 		}
-		for(int i = 0; i < 1000000; i++){
-			services[i] = getexp(exp);
-		}
-		int p1arrival = 0;
-		int p2arrival = 0;
-		int p1depart = 0;
-		int p2depart = 0;
-		nextarrival = arrivals[p1arrival];
-		nextarrival2 = arrivals[p2arrival];
-		double exp1 = services[p1depart];
-		double exp2 = services[p2depart];
-		int countTimer = 0;
-		boolean skip = false;
-		for(int i = 0; i < 1000000; i++) {
-			/*
-			 * How this needs to work:
-			 * Sort the events and have an idea of when the next departure is and what server it is in
-			 * Compare next arrival with the first value in this array
-			 * If next arrival < next departure then give it to the next array and increment time
-			 * If next departure < next arrival then take away and increment time
-			 */
-			//really just need to insert if need be
+		
+		int numjobs0 = 0;
+		int numjobs1 = 0;
+		int numjobs2 = 0;
+		int numjobs3 = 0;
+		boolean changedyet = false;
+		boolean Aempty = false;
+		boolean Bempty = false;
+		boolean start = false;
+		
+		
+		
+		
+		for(int k = 0; k < 1000; k++) {
+			System.out.println("server 0 length: " + servers.get(0).getlength());
+			System.out.println("server 1 length: " + servers.get(1).getlength());
+			System.out.println("server 2 length: " + servers.get(2).getlength());
+			System.out.println("server 3 length: " + servers.get(3).getlength());
 
-			/*if(iii==2){
-				iii = 0;
-				poisson = getexp(poi);
-			}*/
-			if(nextarrival < next_departures_list[0][0]){
-				time = nextarrival;
-				p1arrival++;
-				//this is where a random number between 0-1000 should be made
-				nextServer = (nextServer + 1)%2;
-				if(servers.get(nextServer).addto2(time,nextarrival,exp1)) {
-					p1depart++;
-					exp1 = services[p1depart];
+
+
+			if(start) {
+				if(servers.get(0).getlength() == 0 && servers.get(2).getlength() == 0) {
+					//System.out.println("here");
+					numjobs0 = numjobs2;
+					Aempty = true;
 				}
-				//System.out.println("next departure: " + servers.get(nextServer).getnextdeparture());
-				nextarrival = arrivals[p1arrival];
-
-
-			}
-
-			else {
-				serverremoved = (int)next_departures_list[0][1];
-				time = servers.get(serverremoved).getnextdeparture();
-				boolean nochange = false;
-				double timetakenforitem = time - servers.get(serverremoved).removefrom2(time,exp1,nochange);
-				if (!nochange){
-					p1depart++;
-					exp1 = services[p1depart];
-
-				}
-				next_departures_list[0][0] = servers.get(serverremoved).getnextdeparture();
-				removeditems++;
-				movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
-
-			}
-
-			if(nextarrival2 < next_departures_list2[0][0]){
-				time2 = nextarrival2;
-				p2arrival++;
-
-
-				//this is where a random number between 0-1000 should be made
-				if(i==500){
-					skip = true;
-				}
-				if (skip) {
-					nextServer2 = nextServer2;
-					countTimer++;
-					if (countTimer == 2) {
-						skip = false;
-					}
-				}
-				else{
-					nextServer2 = (nextServer2 + 1) % 2;
-				}
-
-
-				if(servers2.get(nextServer2).addto2(time2, nextarrival2,exp2)){
-					p2depart++;
-					exp2 = services[p2depart];
-				}
-				//System.out.println("next departure: " + servers.get(nextServer).getnextdeparture());
-				nextarrival2 = arrivals[p2arrival];
-
-			}
-
-			else {
-				serverremoved2 = (int)next_departures_list2[0][1];
-				time2 = servers2.get(serverremoved2).getnextdeparture();
-				boolean nochange2 = false;
-				double timetakenforitem2 = time2 - servers2.get(serverremoved2).removefrom2(time2,exp2,nochange2);
-				if (!nochange2){
-					p2depart++;
-					exp2 = services[p1depart];
-
-				}
-				next_departures_list2[0][0] = servers2.get(serverremoved2).getnextdeparture();
-				removeditems2++;
-				movingavg2 = (movingavg2*(removeditems2-1) + timetakenforitem2)/removeditems2;
-
-			}
-
-			for(int j = 0; j < 2; j++) {
-				if(next_departures_list[j][1] == nextServer) {
-					next_departures_list[j][0] = servers.get(nextServer).getnextdeparture();
-				}
-
-
-			}
-			for(int j = 0; j < 2; j++) {
-				if (next_departures_list2[j][1] == nextServer2) {
-					next_departures_list2[j][0] = servers2.get(nextServer2).getnextdeparture();
+				if(servers.get(1).getlength() == 0 && servers.get(3).getlength() == 0) {
+					numjobs1 = numjobs3;
+					Bempty = true;
 				}
 			}
-			sortbyColumn(next_departures_list, 0);
-			sortbyColumn(next_departures_list2, 0);
-
-			/*
-			 System.out.println("Next Departure: " + next_departures_list[0][0]);
-			 System.out.println("Next Arrival: " + nextarrival);
-			 System.out.println("Time: " + time);
-			 System.out.println("--------");
-					*/
-		}
-
-
-		System.out.println(movingavg);
-		System.out.println(movingavg2);
-		return 0;
-	}
-	
-	public static double probabilisticmodel(double fast, double slow, double poi, double probability, int numfast, int numslow) {
-		//intermission describes the number of servers before inputting 1 of the other kind
-		//morefast says if we want to go Fast Fast Fast Slow or Slow Slow Slow Fast
-		
-		
-		ArrayList<server> faster = new ArrayList<server>();
-		ArrayList<server> slower = new ArrayList<server>();
-
-		for(int i = 0; i < numfast; i++) { //declaring x fast servers
-			faster.add(new server(fast));
-		}
-		for(int i = 0; i < numslow; i++) { //declaring y slow servers
-			slower.add(new server(slow));
-		}
-		
-		double nextarrival = getexp(poi);
-		double time = 0;
-		double movingavg = 0;
-		double removeditems = 0;
-		int serverremoved = 0;
-		int nextFastServer = 0;
-		int nextSlowServer = 0;
-		Random r = new Random();
-		
-		double[][]next_departures_fast = new double[numfast][2];
-		double[][]next_departures_slow = new double[numslow][2];
-		//just keep track of the nextdeparturefast nextdepartureslow
-		
-		for(int i = 0; i<numfast; i++) {//initialize the next fast server's list
-			next_departures_fast[i][0] = Integer.MAX_VALUE;
-			next_departures_fast[i][1] = i; //keeps track of which server it is in
-		}
-		
-		for(int i = 0; i<numslow; i++) {//initialize the next slow server's list
-			next_departures_slow[i][0] = Integer.MAX_VALUE;
-			next_departures_slow[i][1] = i; //keeps track of which server it is in
-		}
-		
-		
-		
-		
-		for(int i = 0; i < 1000000; i++) {
-
+			
+			
+			if(start && Aempty && Bempty) {
+				System.out.println("broken");
+				break;
+			}
+			
 			/*
 			 * How this needs to work:
 			 * Sort the events and have an idea of when the next departure is and what server it is in
@@ -256,69 +210,153 @@ public class sim {
 			 */
 			//really just need to insert if need be
 			
-			//deal with arrival according to some process - it's this process that will always change
-			if(nextarrival < next_departures_fast[0][0] && nextarrival < next_departures_slow[0][0]){
-				//generate random uniform variable
+			
+			if(nextarrival < next_departures_list[0][0]){
 				time = nextarrival;
+				//this is where a random number between 0-1000 should be made
+				//nope this is where a decision should be made if server one or two
+				//ok so this works for them being coupled
 				
-				if(r.nextFloat() > probability) {
-					//give to fast (round robin)
-					nextFastServer = (nextFastServer + 1)%numfast;
-					faster.get(nextFastServer).addto(time, nextarrival);
-					for(int j = 0; j < numfast; j++) {
-						if(next_departures_fast[j][1] == nextFastServer) {
-							next_departures_fast[j][0] = faster.get(nextFastServer).getnextdeparture();	
-						}	
-					}
+				double nextDepartureTime;
+				
+				nextServer = (nextServer + 1)%2;
+				if(nextServer == 0) {
+					numjobs0++;
+					nextDepartureTime = departure1.get(numjobs0);
+
 				}
-				else{
-					nextSlowServer = (nextSlowServer + 1)%numslow;
-					slower.get(nextSlowServer).addto(time, nextarrival);
-					for(int j = 0; j < numslow; j++) {
-						if(next_departures_slow[j][1] == nextSlowServer) {
-							next_departures_slow[j][0] = slower.get(nextSlowServer).getnextdeparture();	
-						}	
-					}
-					//give to slow (round robin)
+				else {
+					numjobs1++;
+					nextDepartureTime = departure2.get(numjobs1);
 				}
 				
+				servers.get(nextServer).addto(time, nextarrival);
+				servers.get(nextServer).setnextdeparture(time, nextDepartureTime);
+				
+				if(k>5 && changedyet == false) {
+					System.out.println("Divergent");
+					start = true;
+					removedA = 0;
+					removedB = 0;
+					if(nextServer == 0) {
+						servers.get(nextServer + 3).addto(time, nextarrival);
+						numjobs3++;
+						nextDepartureTime = departure2.get(numjobs3);
+						servers.get(nextServer + 3).setnextdeparture(time, nextDepartureTime);
+						
+					}
+					else if(nextServer == 1) {
+						servers.get(nextServer + 1).addto(time, nextarrival);
+						numjobs2++;
+						nextDepartureTime = departure1.get(numjobs2);
+						servers.get(nextServer + 1).setnextdeparture(time, nextDepartureTime);
+					}
+					changedyet = true;			
+				}
+				
+				
+				
+				else {
+					if(nextServer == 0) {
+						numjobs2++;
+						nextDepartureTime = departure1.get(numjobs2);
+					}
+					else {
+						numjobs3++;
+						nextDepartureTime = departure2.get(numjobs3);
+					}
+					
+					servers.get(nextServer + 2).addto(time, nextarrival);
+					servers.get(nextServer + 2).setnextdeparture(time, nextDepartureTime);
+				}
+				
+				
+				//System.out.println("next departure: " + servers.get(nextServer).getnextdeparture());
 				nextarrival = time + getexp(poi);
 			}
 			
-			//deal with departures - this part will be the same for all processes
 			else {
-				//System.out.println("Next Departures Fast: " + next_departures_fast[0][0]);
-				//System.out.println("Next Departures Slow: " + next_departures_slow[0][0]);
-				if(next_departures_fast[0][0] < next_departures_slow[0][0]) {
-					//System.out.println("yellow");
-					serverremoved = (int)next_departures_fast[0][1];
-					time = faster.get(serverremoved).getnextdeparture();
-					//System.out.print("Fast ");
-					double timetakenforitem = time - faster.get(serverremoved).removefrom(time);
-					next_departures_fast[0][0] = faster.get(serverremoved).getnextdeparture();
-					removeditems++;
-					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+				
+				serverremoved = (int)next_departures_list[0][1];
+				System.out.println("Server Removed " + serverremoved);
+				if(serverremoved == 0) {
+					numjobs0++;
+				}
+				else if(serverremoved == 1) {
+					numjobs1++;
+				}
+				else if(serverremoved == 2) {
+					numjobs2++;
+				}
+				else if(serverremoved == 3) {
+					numjobs3++;
+				}
+
+				
+				if(serverremoved < 2) {
+					time = servers.get(serverremoved).getnextdeparture();
+					double nexttime = 0;
+					if(serverremoved == 0) {
+						nexttime = departure1.get(numjobs0);
+						System.out.println(numjobs0);
+
+					}
+					else {
+						nexttime = departure2.get(numjobs1);
+						System.out.println(numjobs1);
+
+					}
+					double timetakenforitem = time - servers.get(serverremoved).removefromTest(time, nexttime);
+					System.out.println("A " + serverremoved);
+					System.out.println(timetakenforitem);
+					System.out.println("________");
+					next_departures_list[0][0] = servers.get(serverremoved).getnextdeparture();
+					removedA++;
+					mrtA = (mrtA*(removedA-1) + timetakenforitem)/removedA;
+
+					
 				}
 				else {
-					//System.out.println("green");
-					serverremoved = (int)next_departures_slow[0][1];
-					time = slower.get(serverremoved).getnextdeparture();
-					//System.out.println(next_departures_slow[0][1]);
-					//System.out.print("Slow ");
-					double timetakenforitem = time - slower.get(serverremoved).removefrom(time);
-					next_departures_slow[0][0] = slower.get(serverremoved).getnextdeparture();
-					removeditems++;
-					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+					
+					time = servers.get(serverremoved).getnextdeparture();
+					double nexttime = 0;
+					if(serverremoved == 2) {
+						nexttime = departure1.get(numjobs2);
+						System.out.println(numjobs2);
+					}
+					else {
+						nexttime = departure2.get(numjobs3);
+						System.out.println(numjobs3);
+
+					}
+					double timetakenforitem = time - servers.get(serverremoved).removefromTest(time, nexttime);
+					System.out.println("B " + serverremoved);
+					System.out.println(timetakenforitem);
+					
+					System.out.println("________");
+					next_departures_list[0][0] = servers.get(serverremoved).getnextdeparture();
+					removedB++;
+					mrtB = (mrtB*(removedB-1) + timetakenforitem)/removedB;
+					
 				}
 				
 			}
 			
-			//get next departures for fast and slow
-			sortbyColumn(next_departures_fast, 0);
-			sortbyColumn(next_departures_slow, 0);
+			
+			for(int j = 0; j < 4; j++) {
+				if(next_departures_list[j][1] == nextServer) {
+					next_departures_list[j][0] = servers.get(nextServer).getnextdeparture();	
+				}
+				
+				else if(next_departures_list[j][1] == nextServer + 2) {
+					next_departures_list[j][0] = servers.get(nextServer + 2).getnextdeparture();	
+				}
+			}
+			
+			
+			sortbyColumn(next_departures_list, 0);
+			
 
-			
-			
 			/*
 			 System.out.println("Next Departure: " + next_departures_list[0][0]);
 			 System.out.println("Next Arrival: " + nextarrival);
@@ -328,10 +366,152 @@ public class sim {
 		}
 
 		//System.out.println(removeditems);
-		System.out.println(movingavg);
+		System.out.println(mrtA);
+		System.out.println(mrtB);
 		return 0;
+		
 	}
-	//time to try the probabilistic one
+	
+	
+	
+	
+	public static double asrandom(double fast, double slow, double poi, int numfast, int numslow) {
+		//Probabilistically Choose the class of servers then when in each class run round robin in each class and take the round
+				//Robin server as a candidate with two other randomly queried servers, join the shortest queue out of those three servers
+				
+				ArrayList<server> faster = new ArrayList<server>();
+				ArrayList<server> slower = new ArrayList<server>();
+
+				for(int i = 0; i < numfast; i++) { //declaring x fast servers
+					faster.add(new server(fast));
+				}
+				for(int i = 0; i < numslow; i++) { //declaring y slow servers
+					slower.add(new server(slow));
+				}
+				
+				double nextarrival = getexp(poi);
+				double time = 0;
+				double movingavg = 0;
+				double removeditems = 0;
+				int serverremoved = 0;
+				int[] candidates = new int[3]; //holds the index of servers first being candidate from round robin other 4 randomly selected
+				int queueLen = 0; //to keep track of queue length for join the shortest queue implementation
+				int nextFastServer = 0;
+				int rrFastServer = 0; // keeps track of round robin index in the fast servers
+				int nextSlowServer = 0;
+				int rrSlowServer = 0; // keeps track of round robin index in the slow servers
+				Random r = new Random();
+				double probability = (numfast*1.0)/1000;
+				
+				double[][]next_departures_fast = new double[numfast][2];
+				double[][]next_departures_slow = new double[numslow][2];
+				//just keep track of the nextdeparturefast nextdepartureslow
+				
+				for(int i = 0; i<numfast; i++) {//initialize the next fast server's list
+					next_departures_fast[i][0] = Integer.MAX_VALUE;
+					next_departures_fast[i][1] = i; //keeps track of which server it is in
+				}
+				
+				for(int i = 0; i<numslow; i++) {//initialize the next slow server's list
+					next_departures_slow[i][0] = Integer.MAX_VALUE;
+					next_departures_slow[i][1] = i; //keeps track of which server it is in
+				}
+				
+				
+				
+				
+				for(int i = 0; i < 1000000; i++) {
+
+					/*
+					 * How this needs to work:
+					 * Sort the events and have an idea of when the next departure is and what server it is in
+					 * Compare next arrival with the first value in this array
+					 * If next arrival < next departure then give it to the next array and increment time
+					 * If next departure < next arrival then take away and increment time		 
+					 */
+					//really just need to insert if need be
+					
+					//deal with arrival according to some process - it's this process that will always change
+					if(nextarrival < next_departures_fast[0][0] && nextarrival < next_departures_slow[0][0]){
+						//generate random uniform variable
+						time = nextarrival;
+
+						
+						if(r.nextFloat() < probability) {
+							//give to fast (round robin)
+							
+							
+							nextFastServer = r.nextInt(numfast);
+							faster.get(nextFastServer).addto(time, nextarrival);
+							for(int j = 0; j < numfast; j++) {
+								if(next_departures_fast[j][1] == nextFastServer) {
+									next_departures_fast[j][0] = faster.get(nextFastServer).getnextdeparture();	
+								}	
+							}
+						}
+						else{
+							
+							nextSlowServer = r.nextInt(numslow);
+							slower.get(nextSlowServer).addto(time, nextarrival);
+							for(int j = 0; j < numslow; j++) {
+								if(next_departures_slow[j][1] == nextSlowServer) {
+									next_departures_slow[j][0] = slower.get(nextSlowServer).getnextdeparture();	
+								}	
+							}
+							//give to slow (round robin)
+						}
+						
+						nextarrival = time + getexp(poi);
+					}
+					
+					//deal with departures - this part will be the same for all processes
+					else {
+						//System.out.println("Next Departures Fast: " + next_departures_fast[0][0]);
+						//System.out.println("Next Departures Slow: " + next_departures_slow[0][0]);
+						if(next_departures_fast[0][0] < next_departures_slow[0][0]) {
+							//System.out.println("yellow");
+							serverremoved = (int)next_departures_fast[0][1];
+							time = faster.get(serverremoved).getnextdeparture();
+							//System.out.print("Fast ");
+							double timetakenforitem = time - faster.get(serverremoved).removefrom(time);
+							next_departures_fast[0][0] = faster.get(serverremoved).getnextdeparture();
+							removeditems++;
+							movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+						}
+						else {
+							//System.out.println("green");
+							serverremoved = (int)next_departures_slow[0][1];
+							time = slower.get(serverremoved).getnextdeparture();
+							//System.out.println(next_departures_slow[0][1]);
+							//System.out.print("Slow ");
+							double timetakenforitem = time - slower.get(serverremoved).removefrom(time);
+							next_departures_slow[0][0] = slower.get(serverremoved).getnextdeparture();
+							removeditems++;
+							movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+						}
+						
+					}
+					
+					//get next departures for fast and slow
+					sortbyColumn(next_departures_fast, 0);
+					sortbyColumn(next_departures_slow, 0);
+
+					
+					
+					/*
+					 System.out.println("Next Departure: " + next_departures_list[0][0]);
+					 System.out.println("Next Arrival: " + nextarrival);
+					 System.out.println("Time: " + time);
+					 System.out.println("--------");
+							*/
+				}
+
+				System.out.println(movingavg);
+				return movingavg;
+				//return 0;
+		
+	}
+	
 	
 	
 	public static double probRoundJoinModel(double fast, double slow, double poi, double probability, int numfast, int numslow) {
@@ -483,15 +663,151 @@ public class sim {
 					*/
 		}
 
-		//System.out.println(removeditems);
 		System.out.println(movingavg);
-		return 0;
+		return movingavg;
+		//return 0;
 	}
 	
 	
-	public static double heteroroundrobin(double fast, double slow, double poi, int intermission, boolean morefast, int numfast, int numslow) {
+	
+	
+	public static double probabilisticmodel(double fast, double slow, double poi, double probability, int numfast, int numslow) {
 		//intermission describes the number of servers before inputting 1 of the other kind
 		//morefast says if we want to go Fast Fast Fast Slow or Slow Slow Slow Fast
+		
+		ArrayList<server> faster = new ArrayList<server>();
+		ArrayList<server> slower = new ArrayList<server>();
+
+		for(int i = 0; i < numfast; i++) { //declaring x fast servers
+			faster.add(new server(fast));
+		}
+		for(int i = 0; i < numslow; i++) { //declaring y slow servers
+			slower.add(new server(slow));
+		}
+		
+		double nextarrival = getexp(poi);
+		double time = 0;
+		double movingavg = 0;
+		double removeditems = 0;
+		int serverremoved = 0;
+		int nextFastServer = 0;
+		int nextSlowServer = 0;
+		Random r = new Random();
+		
+		double[][]next_departures_fast = new double[numfast][2];
+		double[][]next_departures_slow = new double[numslow][2];
+		//just keep track of the nextdeparturefast nextdepartureslow
+		
+		for(int i = 0; i<numfast; i++) {//initialize the next fast server's list
+			next_departures_fast[i][0] = Integer.MAX_VALUE;
+			next_departures_fast[i][1] = i; //keeps track of which server it is in
+		}
+		
+		for(int i = 0; i<numslow; i++) {//initialize the next slow server's list
+			next_departures_slow[i][0] = Integer.MAX_VALUE;
+			next_departures_slow[i][1] = i; //keeps track of which server it is in
+		}
+		
+		
+		
+		
+		for(int i = 0; i < 1000000; i++) {
+
+			/*
+			 * How this needs to work:
+			 * Sort the events and have an idea of when the next departure is and what server it is in
+			 * Compare next arrival with the first value in this array
+			 * If next arrival < next departure then give it to the next array and increment time
+			 * If next departure < next arrival then take away and increment time		 
+			 */
+			//really just need to insert if need be
+			
+			//deal with arrival according to some process - it's this process that will always change
+			if(nextarrival < next_departures_fast[0][0] && nextarrival < next_departures_slow[0][0]){
+				//generate random uniform variable
+				time = nextarrival;
+				
+				if(r.nextFloat() > probability) {
+					//give to fast (round robin)
+					nextFastServer = (nextFastServer + 1)%numfast;
+					faster.get(nextFastServer).addto(time, nextarrival);
+					for(int j = 0; j < numfast; j++) {
+						if(next_departures_fast[j][1] == nextFastServer) {
+							next_departures_fast[j][0] = faster.get(nextFastServer).getnextdeparture();	
+						}	
+					}
+				}
+				else{
+					nextSlowServer = (nextSlowServer + 1)%numslow;
+					slower.get(nextSlowServer).addto(time, nextarrival);
+					for(int j = 0; j < numslow; j++) {
+						if(next_departures_slow[j][1] == nextSlowServer) {
+							next_departures_slow[j][0] = slower.get(nextSlowServer).getnextdeparture();	
+						}	
+					}
+					//give to slow (round robin)
+				}
+				
+				nextarrival = time + getexp(poi);
+			}
+			
+			//deal with departures - this part will be the same for all processes
+			else {
+				//System.out.println("Next Departures Fast: " + next_departures_fast[0][0]);
+				//System.out.println("Next Departures Slow: " + next_departures_slow[0][0]);
+				if(next_departures_fast[0][0] < next_departures_slow[0][0]) {
+					//System.out.println("yellow");
+					serverremoved = (int)next_departures_fast[0][1];
+					time = faster.get(serverremoved).getnextdeparture();
+					//System.out.print("Fast ");
+					double timetakenforitem = time - faster.get(serverremoved).removefrom(time);
+					next_departures_fast[0][0] = faster.get(serverremoved).getnextdeparture();
+					removeditems++;
+					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+				}
+				else {
+					//System.out.println("green");
+					serverremoved = (int)next_departures_slow[0][1];
+					time = slower.get(serverremoved).getnextdeparture();
+					//System.out.println(next_departures_slow[0][1]);
+					//System.out.print("Slow ");
+					double timetakenforitem = time - slower.get(serverremoved).removefrom(time);
+					next_departures_slow[0][0] = slower.get(serverremoved).getnextdeparture();
+					removeditems++;
+					movingavg = (movingavg*(removeditems-1) + timetakenforitem)/removeditems;
+				}
+				
+			}
+			
+			//get next departures for fast and slow
+			sortbyColumn(next_departures_fast, 0);
+			sortbyColumn(next_departures_slow, 0);
+
+			
+			
+			/*
+			 System.out.println("Next Departure: " + next_departures_list[0][0]);
+			 System.out.println("Next Arrival: " + nextarrival);
+			 System.out.println("Time: " + time);
+			 System.out.println("--------");
+					*/
+		}
+
+		//System.out.println(removeditems);
+		System.out.println(movingavg);
+		return movingavg;
+	}
+	//time to try the probabilistic one
+	
+	
+	
+	
+	
+	public static double heteroroundrobin(double fast, double slow, double poi, int intermission, boolean morefast, int numfast, int numslow) {
+		//fast is how fast the fast servers process items
+		//slow similar
+		//poi is how fast they arrive
+		
 		
 		
 		ArrayList<server> faster = new ArrayList<server>();
@@ -640,9 +956,10 @@ public class sim {
 					*/
 		}
 
-		System.out.println(removeditems);
+		//System.out.println(removeditems);
 		System.out.println(movingavg);
-		return 0;
+		return movingavg;
+		
 	}
 	
 	
